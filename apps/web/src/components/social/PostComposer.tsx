@@ -24,11 +24,17 @@ export function PostComposer({ feedKey, placeholder = "What's on your mind?", ap
     mutationFn: () => api.post(apiEndpoint, {
       body: body.trim() || undefined,
       mediaUrl: gifUrl.trim() || undefined,
-    }),
-    onSuccess: () => {
+    }).then(r => r.data),
+    onSuccess: (newItem) => {
       setBody('')
       setGifUrl('')
       setShowGifPicker(false)
+      // Optimistically prepend the new item to the feed so it appears instantly
+      queryClient.setQueryData(feedKey, (old: any[] | undefined) => {
+        if (!old) return [newItem]
+        return [newItem, ...old]
+      })
+      // Also invalidate so background refetch keeps things in sync
       queryClient.invalidateQueries({ queryKey: feedKey })
     },
   })
@@ -54,7 +60,6 @@ export function PostComposer({ feedKey, placeholder = "What's on your mind?", ap
         />
       </div>
 
-      {/* GIF preview */}
       {gifUrl && (
         <div className="relative max-w-xs rounded-xl overflow-hidden border border-border">
           <img src={gifUrl} alt="GIF" className="w-full" />
