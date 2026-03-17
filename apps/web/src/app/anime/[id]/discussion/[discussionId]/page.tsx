@@ -38,7 +38,7 @@ function ReplyItem({ reply, discussionId, feedKey, depth = 0 }: {
     if (!token) { openAuthModal('Sign in to like.'); return }
     const nextLiked = !liked
     setLocalLiked(nextLiked)
-    setLocalCount(nextLiked ? likeCount + 1 : likeCount - 1)
+    setLocalCount(nextLiked ? likeCount + 1 : Math.max(0, likeCount - 1))
     try {
       const res = await api.post(`/discussions/replies/${reply.id}/like`)
       setLocalLiked(res.data.liked)

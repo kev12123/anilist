@@ -39,7 +39,7 @@ function LikeButton({ initialLiked, initialCount, onToggle }: {
     // Optimistic update
     const nextLiked = !liked
     setLiked(nextLiked)
-    setCount(c => nextLiked ? c + 1 : c - 1)
+    setCount(c => nextLiked ? c + 1 : Math.max(0, c - 1))
     setPending(true)
     try {
       const res = await onToggle()
