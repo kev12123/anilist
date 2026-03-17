@@ -85,7 +85,7 @@ export function RightPanel() {
           Messages
         </Link>
         <Link
-          href={`/profile/${user.username}`}
+          href={`/profile/${user.username}?tab=reviews`}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:text-white hover:bg-surface-2 transition-colors"
         >
           <Star size={16} />

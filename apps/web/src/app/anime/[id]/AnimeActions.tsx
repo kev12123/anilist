@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Play, BookOpen, ChevronDown, Check } from 'lucide-react'
+import { Play, ChevronDown, Check } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -65,14 +65,6 @@ export function AnimeActions({ animeId }: AnimeActionsProps) {
     }
   }
 
-  const handleWriteReview = () => {
-    if (!token) {
-      openAuthModal('Sign in to write a review.')
-      return
-    }
-    // TODO: open review modal
-  }
-
   const currentLabel = STATUSES.find(s => s.key === saved)?.label
 
   return (
@@ -104,13 +96,7 @@ export function AnimeActions({ animeId }: AnimeActionsProps) {
         )}
       </div>
 
-      <button
-        onClick={handleWriteReview}
-        className="flex items-center gap-2 bg-surface-2 hover:bg-border text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-      >
-        <BookOpen size={16} />
-        Write Review
-      </button>
+
     </div>
   )
 }
