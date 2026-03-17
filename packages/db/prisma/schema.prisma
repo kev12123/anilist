@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  bio       String?
+  avatar    String?
+  location  String?
+  website   String?
+  birthYear Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  animeEntries  AnimeEntry[]
+  reviews       Review[]
+  discussions   Discussion[]
+  replies       Reply[]
+  sentMessages  Message[]        @relation("SentMessages")
+  recvMessages  Message[]        @relation("ReceivedMessages")
+  following     Follow[]         @relation("Follower")
+  followers     Follow[]         @relation("Following")
+  posts            Post[]
+  postComments     PostComment[]     @relation("PostCommentUser")
+  postLikes        PostLike[]
+  activities       Activity[]
+  activityComments        ActivityComment[]
+  activityLikes           ActivityLike[]
+  activityCommentLikes    ActivityCommentLike[]
+  replyLikes              ReplyLike[]
+}
+
+model AnimeEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  anilistId Int
+  /// WATCHING | COMPLETED | PLAN_TO_WATCH | DROPPED | ON_HOLD
+  status    String   @default("PLAN_TO_WATCH")
+  score     Int?
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, anilistId])
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  userId        String
+  anilistId     Int
+  episodeNumber Int?
+  body          String
+  score         Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Discussion {
+  id            String   @id @default(cuid())
+  userId        String
+  anilistId     Int
+  episodeNumber Int?
+  title         String
+  body          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies Reply[]
+
+  @@unique([anilistId, episodeNumber])
+}
+
+model Reply {
+  id           String   @id @default(cuid())
+  userId       String
+  discussionId String
+  parentId     String?
+  body         String?
+  mediaUrl     String?
+  createdAt    DateTime @default(now())
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discussion Discussion  @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  parent     Reply?      @relation("ReplyReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Reply[]     @relation("ReplyReplies")
+  likes      ReplyLike[]
+}
+
+model ReplyLike {
+  replyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  reply Reply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([replyId, userId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  body       String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id            String       @id @default(cuid())
+  userId        String
+  type          String       // POST | WATCHING | COMPLETED | DROPPED | PLAN_TO_WATCH | ON_HOLD | REVIEW
+  body          String?      // For POST type
+  mediaUrl      String?      // GIF or image URL
+  anilistId     Int?         // For anime-related activity
+  animeTitle    String?      // Cached title to avoid re-fetching
+  animeCover    String?      // Cached cover
+  reviewScore   Int?         // For REVIEW type
+  createdAt     DateTime     @default(now())
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments ActivityComment[]
+  likes    ActivityLike[]
+}
+
+model ActivityComment {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  parentId   String?
+  body       String?
+  mediaUrl   String?
+  createdAt  DateTime @default(now())
+
+  activity Activity          @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   ActivityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ActivityComment[] @relation("CommentReplies")
+  likes    ActivityCommentLike[]
+}
+
+model ActivityCommentLike {
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment ActivityComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+}
+
+model ActivityLike {
+  activityId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, userId])
+}
+
+model Post {
+  id        String      @id @default(cuid())
+  userId    String
+  body      String
+  createdAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments  PostComment[]
+  likes     PostLike[]
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation("PostCommentUser", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+}

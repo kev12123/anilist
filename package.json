@@ -1,0 +1,14 @@
+{
+  "name": "anilist",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "db:migrate": "pnpm --filter @anilist/db migrate",
+    "db:studio": "pnpm --filter @anilist/db studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
