@@ -294,9 +294,13 @@ export function ActivityCard({ item, feedKey }: ActivityCardProps) {
                   ) : item.animeTitle ? (
                     <Link
                       href={item.type === 'EPISODE_COMMENT'
-                        ? `/anime/${item.anilistId}/episode/${item.animeTitle.replace('Episode ', '')}`
+                        ? (() => {
+                            const epMatch = item.animeTitle.match(/Episode (\d+)/)
+                            const epNum = epMatch ? epMatch[1] : '1'
+                            return `/anime/${item.anilistId}/episode/${epNum}`
+                          })()
                         : `/anime/${item.anilistId}`}
-                      className="font-semibold text-accent-light hover:underline truncate max-w-[180px]"
+                      className="font-semibold text-accent-light hover:underline truncate max-w-[200px]"
                     >
                       {item.animeTitle}
                     </Link>
