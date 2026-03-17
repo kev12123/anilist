@@ -220,10 +220,15 @@ export default function EpisodePage() {
   const { mutate: postReply, isPending } = useMutation({
     mutationFn: ({ body, mediaUrl }: { body: string; mediaUrl?: string }) =>
       api.post(`/discussions/${thread.id}/replies`, { body: body || undefined, mediaUrl }).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: (newReply) => {
       setReplyBody('')
       setReplyGifMain('')
-      setShowGifMain(false)
+      setShowGifPickerMain(false)
+      // Prepend instantly so the user sees their reply without waiting
+      queryClient.setQueryData(feedKey, (old: any) => {
+        if (!old) return old
+        return { ...old, replies: [newReply, ...(old.replies ?? [])] }
+      })
       queryClient.invalidateQueries({ queryKey: feedKey })
       queryClient.invalidateQueries({ queryKey: ['episode-threads', Number(id)] })
     },
