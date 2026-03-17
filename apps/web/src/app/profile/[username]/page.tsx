@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Image from 'next/image'
@@ -26,9 +26,10 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
 
 export default function ProfilePage() {
   const { username } = useParams() as { username: string }
+  const searchParams = useSearchParams()
   const { token, user: me } = useAuthStore()
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<Tab>('posts')
+  const [tab, setTab] = useState<Tab>((searchParams.get('tab') as Tab) ?? 'posts')
   const [mounted, setMounted] = useState(false)
   const isOwnProfile = mounted && me?.username === username
 
