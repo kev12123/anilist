@@ -5,7 +5,21 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Heart, MessageSquare, Trash2, Send, Star, Eye, CheckCircle, XCircle, Clock, BookMarked, UserPlus, ChevronDown, ChevronUp, Image as ImageIcon, X } from 'lucide-react'
 import { GifPicker } from '@/components/ui/GifPicker'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+
+// For old-format episode comments that only stored "Episode X", fetch the anime title
+function useEpisodeAnimeTitle(anilistId: number | null | undefined, animeTitle: string | null | undefined) {
+  const isOldFormat = !!animeTitle && /^Episode \d+$/.test(animeTitle)
+  const { data } = useQuery({
+    queryKey: ['anime-title', anilistId],
+    queryFn: () => api.get(`/anime/${anilistId}`).then(r => r.data),
+    enabled: !!anilistId && isOldFormat,
+    staleTime: Infinity,
+  })
+  if (!isOldFormat) return animeTitle
+  const title = data?.Media?.title?.english || data?.Media?.title?.romaji
+  return title ? `${title} — ${animeTitle}` : animeTitle
+}
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth'
 import { clsx } from 'clsx'
@@ -248,6 +262,10 @@ export function ActivityCard({ item, feedKey }: ActivityCardProps) {
   const meta = TYPE_META[item.type] ?? TYPE_META.POST
   const Icon = meta.icon
   const isOwn = item.user?.id === user?.id
+  const displayTitle = useEpisodeAnimeTitle(
+    item.type === 'EPISODE_COMMENT' ? item.anilistId : null,
+    item.type === 'EPISODE_COMMENT' ? item.animeTitle : null
+  ) ?? item.animeTitle
   const initialLiked = item.likes?.some((l: any) => l.userId === user?.id) ?? false
   const initialCount = item._count?.likes ?? 0
 
@@ -291,14 +309,18 @@ export function ActivityCard({ item, feedKey }: ActivityCardProps) {
                   </span>
                   {item.type === 'FOLLOW' && item.body ? (
                     <Link href={`/profile/${item.body}`} className="font-semibold text-accent-light hover:underline">{item.body}</Link>
-                  ) : item.animeTitle ? (
+                  ) : displayTitle ? (
                     <Link
                       href={item.type === 'EPISODE_COMMENT'
-                        ? `/anime/${item.anilistId}/episode/${item.animeTitle.replace('Episode ', '')}`
+                        ? (() => {
+                            const epMatch = displayTitle.match(/Episode (\d+)/)
+                            const epNum = epMatch ? epMatch[1] : '1'
+                            return `/anime/${item.anilistId}/episode/${epNum}`
+                          })()
                         : `/anime/${item.anilistId}`}
-                      className="font-semibold text-accent-light hover:underline truncate max-w-[180px]"
+                      className="font-semibold text-accent-light hover:underline truncate max-w-[200px]"
                     >
-                      {item.animeTitle}
+                      {displayTitle}
                     </Link>
                   ) : null}
                   {item.type === 'REVIEW' && item.reviewScore && (
@@ -325,15 +347,15 @@ export function ActivityCard({ item, feedKey }: ActivityCardProps) {
       {item.animeCover && !['POST', 'FOLLOW'].includes(item.type) && (
         <Link
           href={item.type === 'EPISODE_COMMENT'
-            ? `/anime/${item.anilistId}/episode/${item.animeTitle?.replace('Episode ', '')}`
+            ? (() => { const m = displayTitle?.match(/Episode (\d+)/); return `/anime/${item.anilistId}/episode/${m?.[1] ?? '1'}` })()
             : `/anime/${item.anilistId}`}
           className="flex gap-3 bg-surface-2 rounded-lg p-2 mb-3 hover:bg-border transition-colors group"
         >
           <div className="relative w-8 h-12 rounded overflow-hidden flex-shrink-0">
-            <Image src={item.animeCover} alt={item.animeTitle ?? ''} fill className="object-cover" />
+            <Image src={item.animeCover} alt={displayTitle ?? ''} fill className="object-cover" />
           </div>
           <div className="flex flex-col justify-center min-w-0">
-            <p className="text-xs font-semibold text-white group-hover:text-accent-light truncate">{item.animeTitle}</p>
+            <p className="text-xs font-semibold text-white group-hover:text-accent-light truncate">{displayTitle}</p>
             {item.body && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{item.body}</p>}
           </div>
         </Link>
