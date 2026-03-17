@@ -37,13 +37,13 @@ function ReplyItem({ reply, discussionId, feedKey, depth = 0 }: {
   const handleToggleLike = async () => {
     if (!token) { openAuthModal('Sign in to like.'); return }
     const nextLiked = !liked
-    const nextCount = nextLiked ? likeCount + 1 : likeCount - 1
+    const nextCount = nextLiked ? likeCount + 1 : Math.max(0, likeCount - 1)
     setLocalLiked(nextLiked)
     setLocalCount(nextCount)
     try {
       const res = await api.post(`/discussions/replies/${reply.id}/like`)
       setLocalLiked(res.data.liked)
-      setLocalCount(res.data.liked ? nextCount : nextCount - 1)
+      setLocalCount(res.data.liked ? nextCount : Math.max(0, nextCount - 1))
     } catch {
       setLocalLiked(null)
       setLocalCount(null)
