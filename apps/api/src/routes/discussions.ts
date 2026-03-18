@@ -3,6 +3,7 @@ import { prisma } from '@anilist/db'
 import { requireAuth } from '../lib/auth'
 import { z } from 'zod'
 import { createActivityEvent } from './activity'
+import { getAnime } from '../lib/anilist'
 
 const createDiscussionSchema = z.object({
   anilistId: z.number(),
@@ -193,14 +194,16 @@ export async function discussionRoutes(fastify: FastifyInstance) {
     try {
       const discussion = await prisma.discussion.findUnique({ where: { id } })
       if (discussion?.episodeNumber) {
+        const animeData = await getAnime(discussion.anilistId)
+        const media = animeData?.Media
+        const animeTitle = media?.title?.english || media?.title?.romaji
         await createActivityEvent({
           userId: user.id,
           type: 'EPISODE_COMMENT',
           anilistId: discussion.anilistId,
-          body: bodyText.slice(0, 200),
-          // Store episode + discussion id in animeTitle field temporarily
-          animeTitle: `Episode ${discussion.episodeNumber}`,
-          animeCover: undefined,
+          body: bodyText ? bodyText.slice(0, 200) : undefined,
+          animeTitle: animeTitle ? `${animeTitle} — Episode ${discussion.episodeNumber}` : `Episode ${discussion.episodeNumber}`,
+          animeCover: media?.coverImage?.medium,
         })
       }
     } catch { /* non-blocking */ }

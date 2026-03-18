@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, CSSProperties } from 'react'
 import { Search, X, Loader2 } from 'lucide-react'
 
 interface GifPickerProps {
@@ -20,6 +20,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   const [results, setResults] = useState<GifResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [posStyle, setPosStyle] = useState<CSSProperties>({ bottom: '100%', left: 0, marginBottom: '8px' })
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -27,6 +28,39 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   useEffect(() => {
     inputRef.current?.focus()
     fetchGifs('')
+  }, [])
+
+  // After first render, measure and correct position so it stays within viewport
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const style: CSSProperties = {}
+
+    // Vertical: prefer opening upward; flip downward if not enough space above
+    if (rect.top < 8) {
+      style.bottom = 'auto'
+      style.top = '100%'
+      style.marginTop = '8px'
+      style.marginBottom = undefined
+    } else {
+      style.bottom = '100%'
+      style.top = 'auto'
+      style.marginBottom = '8px'
+    }
+
+    // Horizontal: prefer left-aligned; shift left if overflowing right edge
+    if (rect.right > vw - 8) {
+      style.left = 'auto'
+      style.right = 0
+    } else {
+      style.left = 0
+      style.right = 'auto'
+    }
+
+    setPosStyle(style)
   }, [])
 
   useEffect(() => {
@@ -90,7 +124,8 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   return (
     <div
       ref={containerRef}
-      className="absolute z-50 bottom-full mb-2 left-0 w-80 bg-surface-2 border border-border rounded-2xl shadow-2xl shadow-black/50 overflow-hidden"
+      style={posStyle}
+      className="absolute z-50 w-80 bg-surface-2 border border-border rounded-2xl shadow-2xl shadow-black/50 overflow-hidden"
     >
       <div className="flex items-center gap-2 p-3 border-b border-border">
         <div className="relative flex-1">
