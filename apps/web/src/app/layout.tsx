@@ -5,6 +5,7 @@ import { RightPanel } from '@/components/layout/RightPanel'
 import { MainContent } from '@/components/layout/MainContent'
 import { Providers } from './providers'
 import { GlobalAuthModal } from '@/components/ui/GlobalAuthModal'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'Ani.list — Your Anime Social Network',
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <MainContent>{children}</MainContent>
+            <MainContent>
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </MainContent>
             <RightPanel />
           </div>
           <GlobalAuthModal />
