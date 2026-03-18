@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Tv, Users } from 'lucide-react'
+import { Search, Tv, Users, ChevronDown, X } from 'lucide-react'
 import { AnimeCard } from '@/components/anime/AnimeCard'
 import { api } from '@/lib/api'
 import Link from 'next/link'
@@ -10,17 +10,98 @@ import { clsx } from 'clsx'
 
 type Tab = 'anime' | 'users'
 
+const GENRES = [
+  'Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy', 'Horror',
+  'Mahou Shoujo', 'Mecha', 'Music', 'Mystery', 'Psychological', 'Romance',
+  'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller',
+]
+
+const CURRENT_YEAR = new Date().getFullYear()
+const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i)
+
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { label: string; value: string }[]
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = options.find(o => o.value === value)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(s => !s)}
+        className={clsx(
+          'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors',
+          value
+            ? 'bg-accent/20 border-accent text-accent-light'
+            : 'bg-surface border-border text-muted hover:text-white hover:border-accent/50'
+        )}
+      >
+        {selected?.label ?? label}
+        <ChevronDown size={13} className={clsx('transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 w-48 bg-surface-2 border border-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
+          <div className="max-h-64 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-xs text-muted hover:bg-surface hover:text-white transition-colors"
+            >
+              Any {label}
+            </button>
+            {options.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className={clsx(
+                  'w-full text-left px-3 py-2 text-sm transition-colors',
+                  opt.value === value
+                    ? 'bg-accent/20 text-accent-light'
+                    : 'text-zinc-300 hover:bg-surface hover:text-white'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function BrowsePage() {
   const [tab, setTab] = useState<Tab>('anime')
   const [input, setInput] = useState('')
   const [query, setQuery] = useState('')
+  const [genre, setGenre] = useState('')
+  const [year, setYear] = useState('')
+
+  const hasFilters = !!(genre || year)
 
   const { data: animeData, isLoading: animeLoading } = useQuery({
-    queryKey: query ? ['search', query] : ['trending'],
-    queryFn: () =>
-      query
-        ? api.get(`/anime/search?q=${encodeURIComponent(query)}`).then(r => r.data)
-        : api.get('/anime/trending').then(r => r.data),
+    queryKey: ['browse-anime', query, genre, year],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (query) params.set('q', query)
+      if (genre) params.set('genre', genre)
+      if (year) params.set('year', year)
+      const hasSearch = query || genre || year
+      return hasSearch
+        ? api.get(`/anime/search?${params.toString()}`).then(r => r.data)
+        : api.get('/anime/trending').then(r => r.data)
+    },
     enabled: tab === 'anime',
   })
 
@@ -33,6 +114,11 @@ export default function BrowsePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setQuery(input)
+  }
+
+  const clearFilters = () => {
+    setGenre('')
+    setYear('')
   }
 
   const anime = animeData?.Page?.media ?? []
@@ -50,7 +136,7 @@ export default function BrowsePage() {
           ] as { key: Tab; label: string; icon: any }[]).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => { setTab(key); setQuery(''); setInput('') }}
+              onClick={() => { setTab(key); setQuery(''); setInput(''); clearFilters() }}
               className={clsx(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                 tab === key ? 'bg-accent text-white' : 'text-muted hover:text-white'
@@ -62,24 +148,53 @@ export default function BrowsePage() {
           ))}
         </div>
 
-        {/* Search box */}
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder={tab === 'anime' ? 'Search anime...' : 'Search users...'}
-              className="w-full bg-surface border border-border rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-muted focus:outline-none focus:border-accent transition-colors"
-            />
+        {/* Search + filters */}
+        <form onSubmit={handleSearch} className="space-y-3">
+          <div className="flex gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder={tab === 'anime' ? 'Search anime...' : 'Search users...'}
+                className="w-full bg-surface border border-border rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-muted focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-accent hover:bg-accent-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              Search
+            </button>
           </div>
-          <button
-            type="submit"
-            className="bg-accent hover:bg-accent-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            Search
-          </button>
+
+          {/* Filters row — anime only */}
+          {tab === 'anime' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <FilterDropdown
+                label="Genre"
+                value={genre}
+                options={GENRES.map(g => ({ label: g, value: g }))}
+                onChange={setGenre}
+              />
+              <FilterDropdown
+                label="Year"
+                value={year}
+                options={YEARS.map(y => ({ label: String(y), value: String(y) }))}
+                onChange={setYear}
+              />
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="flex items-center gap-1.5 text-xs text-muted hover:text-white transition-colors px-2 py-2"
+                >
+                  <X size={12} /> Clear filters
+                </button>
+              )}
+            </div>
+          )}
         </form>
       </div>
 
@@ -94,7 +209,10 @@ export default function BrowsePage() {
         ) : (
           <>
             <p className="text-sm text-muted mb-4">
-              {query ? `Results for "${query}"` : 'Trending anime'} · {anime.length} results
+              {query || hasFilters
+                ? `${query ? `Results for "${query}"` : 'Filtered results'}${genre ? ` · ${genre}` : ''}${year ? ` · ${year}` : ''}`
+                : 'Trending anime'
+              } · {anime.length} results
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {anime.map((a: any) => (
