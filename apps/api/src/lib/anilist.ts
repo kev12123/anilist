@@ -13,23 +13,35 @@ async function query<T>(gql: string, variables?: Record<string, unknown>): Promi
   return json.data
 }
 
-export async function searchAnime(search: string, page = 1, perPage = 20) {
-  const cacheKey = `anime:search:${search}:${page}`
+export async function searchAnime(search: string, page = 1, perPage = 20, genre?: string, year?: number) {
+  const cacheKey = `anime:search:${search}:${page}:${genre ?? ''}:${year ?? ''}`
   const cached = await getCached(cacheKey)
   if (cached) return cached
 
   const data = await query<any>(`
-    query ($search: String, $page: Int, $perPage: Int) {
+    query ($search: String, $page: Int, $perPage: Int, $genre: String, $year: Int) {
       Page(page: $page, perPage: $perPage) {
         pageInfo { total currentPage lastPage hasNextPage }
-        media(search: $search, type: ANIME) {
+        media(
+          search: $search
+          type: ANIME
+          genre: $genre
+          seasonYear: $year
+          sort: POPULARITY_DESC
+        ) {
           id title { romaji english native } coverImage { large medium }
           averageScore episodes status description(asHtml: false)
           genres startDate { year } season seasonYear
         }
       }
     }
-  `, { search, page, perPage })
+  `, {
+    search: search || undefined,
+    page,
+    perPage,
+    genre: genre || undefined,
+    year: year || undefined,
+  })
 
   await setCached(cacheKey, data, CACHE_TTL.ANIME_LIST)
   return data
