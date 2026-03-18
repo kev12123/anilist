@@ -82,7 +82,7 @@ export default async function AnimePage({ params }: { params: { id: string } }) 
           </p>
 
           {/* Actions */}
-          <AnimeActions animeId={anime.id} />
+          <AnimeActions animeId={anime.id} totalEpisodes={anime.episodes} />
         </div>
       </div>
 

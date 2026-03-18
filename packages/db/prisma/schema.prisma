@@ -47,6 +47,7 @@ model AnimeEntry {
   /// WATCHING | COMPLETED | PLAN_TO_WATCH | DROPPED | ON_HOLD
   status    String   @default("PLAN_TO_WATCH")
   score     Int?
+  progress  Int      @default(0)
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

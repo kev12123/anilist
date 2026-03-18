@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Play, ChevronDown, Check } from 'lucide-react'
+import { Play, ChevronDown, Check, Minus, Plus } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -16,14 +16,17 @@ const STATUSES = [
 
 interface AnimeActionsProps {
   animeId: number
+  totalEpisodes?: number
 }
 
-export function AnimeActions({ animeId }: AnimeActionsProps) {
+export function AnimeActions({ animeId, totalEpisodes }: AnimeActionsProps) {
   const { token, openAuthModal } = useAuthStore()
   const queryClient = useQueryClient()
   const [showPicker, setShowPicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [savingProgress, setSavingProgress] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -38,7 +41,22 @@ export function AnimeActions({ animeId }: AnimeActionsProps) {
   // Sync saved state with existing entry
   useEffect(() => {
     if (existingEntry?.status) setSaved(existingEntry.status)
+    if (existingEntry?.progress != null) setProgress(existingEntry.progress)
   }, [existingEntry])
+
+  const updateProgress = async (newProgress: number) => {
+    if (!token) return
+    const clamped = Math.max(0, totalEpisodes ? Math.min(newProgress, totalEpisodes) : newProgress)
+    setProgress(clamped)
+    setSavingProgress(true)
+    try {
+      await api.patch(`/anime/${animeId}/entry/progress`, { progress: clamped })
+      queryClient.invalidateQueries({ queryKey: ['anime-entry', animeId] })
+      queryClient.invalidateQueries({ queryKey: ['mylist'] })
+    } finally {
+      setSavingProgress(false)
+    }
+  }
 
   if (!mounted) return null
 
@@ -96,7 +114,29 @@ export function AnimeActions({ animeId }: AnimeActionsProps) {
         )}
       </div>
 
-
+      {/* Episode progress — only shown when Watching and episodes are known */}
+      {saved === 'WATCHING' && token && (
+        <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-1.5">
+          <span className="text-xs text-muted">Ep</span>
+          <button
+            onClick={() => updateProgress(progress - 1)}
+            disabled={progress <= 0 || savingProgress}
+            className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-white hover:bg-surface-2 transition-colors disabled:opacity-30"
+          >
+            <Minus size={11} />
+          </button>
+          <span className="text-sm font-bold text-white tabular-nums w-8 text-center">
+            {progress}{totalEpisodes ? `/${totalEpisodes}` : ''}
+          </span>
+          <button
+            onClick={() => updateProgress(progress + 1)}
+            disabled={(!!totalEpisodes && progress >= totalEpisodes) || savingProgress}
+            className="w-5 h-5 flex items-center justify-center rounded text-muted hover:text-white hover:bg-surface-2 transition-colors disabled:opacity-30"
+          >
+            <Plus size={11} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

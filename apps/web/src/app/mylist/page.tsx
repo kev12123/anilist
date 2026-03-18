@@ -93,14 +93,29 @@ export default function MyListPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filtered.map((entry: any) => (
             entry.anime ? (
-              <AnimeCard
-                key={entry.anilistId}
-                id={entry.anilistId}
-                title={entry.anime.title?.english || entry.anime.title?.romaji}
-                coverImage={entry.anime.coverImage?.large}
-                score={entry.score ? entry.score * 10 : entry.anime.averageScore}
-                episodes={entry.anime.episodes}
-              />
+              <div key={entry.anilistId} className="relative">
+                <AnimeCard
+                  id={entry.anilistId}
+                  title={entry.anime.title?.english || entry.anime.title?.romaji}
+                  coverImage={entry.anime.coverImage?.large}
+                  score={entry.score ? entry.score * 10 : entry.anime.averageScore}
+                  episodes={entry.anime.episodes}
+                />
+                {entry.status === 'WATCHING' && entry.anime.episodes && (
+                  <div className="mt-1.5 px-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted mb-0.5">
+                      <span>Progress</span>
+                      <span>{entry.progress ?? 0}/{entry.anime.episodes}</span>
+                    </div>
+                    <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-accent rounded-full transition-all"
+                        style={{ width: `${Math.min(100, ((entry.progress ?? 0) / entry.anime.episodes) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : null
           ))}
         </div>

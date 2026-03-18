@@ -81,6 +81,7 @@ export async function animeRoutes(fastify: FastifyInstance) {
   const entrySchema = z.object({
     status: z.enum(VALID_STATUSES),
     score: z.number().min(1).max(10).optional(),
+    progress: z.number().min(0).optional(),
   })
 
   fastify.put('/:id/entry', { preHandler: [requireAuth] }, async (request, reply) => {
@@ -107,6 +108,20 @@ export async function animeRoutes(fastify: FastifyInstance) {
       })
     } catch { /* non-blocking */ }
 
+    return reply.send(entry)
+  })
+
+  // Update episode progress only
+  fastify.patch('/:id/entry/progress', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const user = request.user as { id: string }
+    const { progress } = z.object({ progress: z.number().min(0) }).parse(request.body)
+
+    const entry = await prisma.animeEntry.upsert({
+      where: { userId_anilistId: { userId: user.id, anilistId: Number(id) } },
+      update: { progress },
+      create: { userId: user.id, anilistId: Number(id), status: 'WATCHING', progress },
+    })
     return reply.send(entry)
   })
 }
