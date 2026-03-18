@@ -68,6 +68,25 @@ export async function getAnime(id: number) {
         staff(perPage: 8) {
           nodes { id name { full } primaryOccupations }
         }
+        relations {
+          edges {
+            relationType(version: 2)
+            node {
+              id type title { english romaji }
+              coverImage { large medium }
+              averageScore episodes status format
+            }
+          }
+        }
+        recommendations(perPage: 6, sort: RATING_DESC) {
+          nodes {
+            mediaRecommendation {
+              id title { english romaji }
+              coverImage { large medium }
+              averageScore episodes status
+            }
+          }
+        }
       }
     }
   `, { id })
