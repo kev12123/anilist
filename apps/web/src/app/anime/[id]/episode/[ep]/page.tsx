@@ -204,6 +204,14 @@ export default function EpisodePage() {
   const { data: animeTitle } = useQuery({
     queryKey: ['anime-title', id],
     queryFn: async () => {
+      // Try reading from the anime detail cache first (avoids a redundant network call
+      // if the user navigated here from the anime page)
+      const cached = queryClient.getQueryData<any>(['anime', Number(id)])
+      if (cached) {
+        const t = cached.Media?.title
+        return t?.english || t?.romaji || null
+      }
+      // Fallback: lightweight fetch directly from AniList
       const res = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
