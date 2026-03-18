@@ -220,14 +220,6 @@ export default function EpisodePage() {
     staleTime: Infinity,
   })
 
-  const { data: animeData } = useQuery({
-    queryKey: ['anime-title', id],
-    queryFn: () => api.get(`/anime/${id}`).then(r => r.data),
-    enabled: mounted,
-  })
-
-  const animeTitle = animeData?.Media?.title?.english || animeData?.Media?.title?.romaji
-
   const { data: thread, isLoading, error } = useQuery({
     queryKey: feedKey,
     queryFn: async () => {
@@ -319,10 +311,6 @@ export default function EpisodePage() {
           {animeTitle && (
             <p className="text-sm text-accent-light mt-0.5">{animeTitle}</p>
           )}
-          <Link href={`/anime/${id}`} className="text-xs text-accent-light hover:underline transition-colors font-medium">
-            {animeTitle ?? `Anime #${id}`}
-          </Link>
-          <h1 className="text-2xl font-bold text-white mt-1">Episode {ep} Discussion</h1>
           <p className="text-sm text-muted mt-1">{thread?.replies?.length ?? 0} comments</p>
         </div>
         {/* Sort toggle */}
