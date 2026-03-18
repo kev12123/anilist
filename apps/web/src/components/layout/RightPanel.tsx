@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { LogOut, List, Star, MessageSquare, Settings } from 'lucide-react'
+import { NotificationBell } from '@/components/ui/NotificationBell'
 
 export function RightPanel() {
   const { token, user, setToken, setUser } = useAuthStore()
@@ -33,8 +34,13 @@ export function RightPanel() {
 
   return (
     <aside className="fixed right-0 top-0 h-screen w-60 bg-surface border-l border-border flex flex-col z-40">
+      {/* Top bar: notifications */}
+      <div className="px-3 py-3 border-b border-border flex justify-end">
+        <NotificationBell />
+      </div>
+
       {/* Profile header */}
-      <div className="px-5 py-6 border-b border-border">
+      <div className="px-5 py-5 border-b border-border">
         <Link href={`/profile/${user.username}`} className="flex flex-col items-center gap-3 group">
           <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center text-2xl font-bold text-accent-light border-2 border-accent/40 group-hover:border-accent transition-colors">
             {user.username[0].toUpperCase()}

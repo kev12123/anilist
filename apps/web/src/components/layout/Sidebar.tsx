@@ -6,8 +6,6 @@ import { Home, Search, LogIn, Calendar } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuthStore } from '@/store/auth'
 import { useEffect, useState } from 'react'
-import { NotificationBell } from '@/components/ui/NotificationBell'
-
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/browse', label: 'Browse', icon: Search },
@@ -54,10 +52,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom bar: notifications + sign in */}
-      <div className="px-3 py-4 border-t border-border flex items-center justify-between">
-        <NotificationBell />
-        {mounted && !token && (
+      {/* Bottom bar: sign in */}
+      {mounted && !token && (
+        <div className="px-3 py-4 border-t border-border">
           <Link
             href="/auth"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted hover:text-white hover:bg-surface-2 transition-colors"
@@ -65,8 +62,8 @@ export function Sidebar() {
             <LogIn size={18} />
             Sign In
           </Link>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
   )
 }
