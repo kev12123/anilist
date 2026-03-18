@@ -223,7 +223,7 @@ export default function EpisodePage() {
     onSuccess: () => {
       setReplyBody('')
       setReplyGifMain('')
-      setShowGifMain(false)
+      setShowGifPickerMain(false)
       queryClient.invalidateQueries({ queryKey: feedKey })
       queryClient.invalidateQueries({ queryKey: ['episode-threads', Number(id)] })
     },
