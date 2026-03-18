@@ -201,6 +201,25 @@ export default function EpisodePage() {
 
   const feedKey = ['episode-thread', id, ep, sort]
 
+  const { data: animeTitle } = useQuery({
+    queryKey: ['anime-title', id],
+    queryFn: async () => {
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          query: `query ($id: Int) { Media(id: $id, type: ANIME) { title { english romaji } } }`,
+          variables: { id: Number(id) },
+        }),
+      })
+      const json = await res.json()
+      const t = json.data?.Media?.title
+      return t?.english || t?.romaji || null
+    },
+    enabled: mounted,
+    staleTime: Infinity,
+  })
+
   const { data: thread, isLoading, error } = useQuery({
     queryKey: feedKey,
     queryFn: async () => {
@@ -284,6 +303,9 @@ export default function EpisodePage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Episode {ep} Discussion</h1>
+          {animeTitle && (
+            <p className="text-sm text-accent-light mt-0.5">{animeTitle}</p>
+          )}
           <p className="text-sm text-muted mt-1">{thread?.replies?.length ?? 0} comments</p>
         </div>
         {/* Sort toggle */}
