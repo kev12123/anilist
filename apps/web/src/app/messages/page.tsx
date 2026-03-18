@@ -152,7 +152,14 @@ export default function MessagesPage() {
 
     socket.on('message:sent', (msg: Message) => {
       setChatMessages(prev => {
-        // Avoid duplicates (optimistic + confirmed)
+        // Replace the optimistic placeholder with the confirmed message
+        const hasOptimistic = prev.some(m => m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId)
+        if (hasOptimistic) {
+          return prev.map(m =>
+            m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId ? msg : m
+          )
+        }
+        // Fallback: avoid exact id dup
         if (prev.find(m => m.id === msg.id)) return prev
         return [...prev, msg]
       })
