@@ -16,6 +16,8 @@ const GENRES = [
   'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller',
 ]
 
+
+
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i)
 
