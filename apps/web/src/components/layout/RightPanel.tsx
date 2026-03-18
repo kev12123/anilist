@@ -52,18 +52,20 @@ export function RightPanel() {
       {profile && (
         <div className="px-5 py-4 border-b border-border">
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-surface-2 rounded-lg px-2 py-3">
-              <p className="text-sm font-bold text-white">{profile._count?.reviews ?? 0}</p>
-              <p className="text-[10px] text-muted mt-0.5">Reviews</p>
-            </div>
-            <div className="bg-surface-2 rounded-lg px-2 py-3">
-              <p className="text-sm font-bold text-white">{profile._count?.followers ?? 0}</p>
-              <p className="text-[10px] text-muted mt-0.5">Followers</p>
-            </div>
-            <div className="bg-surface-2 rounded-lg px-2 py-3">
-              <p className="text-sm font-bold text-white">{profile._count?.following ?? 0}</p>
-              <p className="text-[10px] text-muted mt-0.5">Following</p>
-            </div>
+            {[
+              { label: 'Reviews', value: profile._count?.reviews ?? 0, tab: 'reviews' },
+              { label: 'Followers', value: profile._count?.followers ?? 0, tab: 'followers' },
+              { label: 'Following', value: profile._count?.following ?? 0, tab: 'following' },
+            ].map(stat => (
+              <Link
+                key={stat.label}
+                href={`/profile/${user.username}?tab=${stat.tab}`}
+                className="bg-surface-2 rounded-lg px-2 py-3 hover:bg-border transition-colors"
+              >
+                <p className="text-sm font-bold text-white">{stat.value}</p>
+                <p className="text-[10px] text-muted mt-0.5">{stat.label}</p>
+              </Link>
+            ))}
           </div>
         </div>
       )}
