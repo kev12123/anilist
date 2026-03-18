@@ -178,22 +178,15 @@ export default function MessagesPage() {
   })
 
   // Auto-open conversation when coming from ?user= (e.g. profile Message button)
+  // Fire as soon as we're mounted + authed — don't wait for conversations to load
   useEffect(() => {
     const userId = searchParams.get('user')
     if (!userId || !mounted || !token) return
-    // Try to find in existing conversations first
-    const existing = conversations.find(c => c.partner.id === userId)
-    if (existing) {
-      setActivePartner(existing.partner)
-      router.replace('/messages')
-      return
-    }
-    // Otherwise fetch the user profile to get their info
     api.get(`/users/by-id/${userId}`).then(r => {
       setActivePartner({ id: r.data.id, username: r.data.username, avatar: r.data.avatar })
       router.replace('/messages')
     }).catch(() => {})
-  }, [searchParams.get('user'), mounted, conversations.length])
+  }, [mounted, token])
 
   // Load message thread when partner changes
   useEffect(() => {
