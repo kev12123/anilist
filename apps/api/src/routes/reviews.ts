@@ -17,6 +17,11 @@ export async function reviewRoutes(fastify: FastifyInstance) {
     const user = request.user as { id: string }
     const body = reviewSchema.parse(request.body)
 
+    const existing = await prisma.review.findUnique({
+      where: { userId_anilistId: { userId: user.id, anilistId: body.anilistId } },
+    })
+    if (existing) return reply.status(409).send({ error: 'You have already reviewed this anime.' })
+
     const review = await prisma.review.create({
       data: { userId: user.id, ...body },
       include: { user: { select: { id: true, username: true, avatar: true } } },
