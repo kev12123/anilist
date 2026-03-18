@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth'
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
-import { Send, MessageSquare, ArrowLeft, SquarePen, Search, X, Image as ImageIcon } from 'lucide-react'
+import { Send, MessageSquare, ArrowLeft, SquarePen, Search, X, Image as ImageIcon, Heart } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
 import { GifPicker } from '@/components/ui/GifPicker'
@@ -20,6 +20,8 @@ interface Message {
   read: boolean
   createdAt: string
   sender: { id: string; username: string; avatar?: string }
+  likes?: { userId: string }[]
+  _count?: { likes: number }
 }
 
 interface Conversation {
@@ -48,6 +50,56 @@ function formatTime(iso: string) {
   if (diffDays === 1) return 'Yesterday'
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' })
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+function MessageBubble({ msg, isMe, currentUserId }: { msg: Message; isMe: boolean; currentUserId: string }) {
+  const serverLiked = msg.likes?.some(l => l.userId === currentUserId) ?? false
+  const serverCount = msg._count?.likes ?? 0
+  const [liked, setLiked] = useState(serverLiked)
+  const [likeCount, setLikeCount] = useState(serverCount)
+
+  const toggleLike = async () => {
+    const next = !liked
+    setLiked(next)
+    setLikeCount(c => next ? c + 1 : c - 1)
+    try {
+      const res = await api.post(`/messages/${msg.id}/like`)
+      setLiked(res.data.liked)
+    } catch {
+      setLiked(!next)
+      setLikeCount(c => next ? c - 1 : c + 1)
+    }
+  }
+
+  return (
+    <div className={clsx('flex gap-2 group', isMe ? 'flex-row-reverse' : 'flex-row')}>
+      {!isMe && <Avatar user={msg.sender} size="sm" />}
+      <div className={clsx('flex flex-col', isMe ? 'items-end' : 'items-start')}>
+        <div className={clsx(
+          'max-w-[70%] rounded-2xl text-sm overflow-hidden',
+          msg.mediaUrl && !msg.body ? '' : clsx('px-3 py-2', isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface-2 text-zinc-200 rounded-tl-sm')
+        )}>
+          {msg.mediaUrl && (
+            <img src={msg.mediaUrl} alt="GIF" className="rounded-xl max-w-[240px] w-full" />
+          )}
+          {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+          <p className={clsx('text-[10px] mt-1', isMe ? 'text-white/60 text-right' : 'text-muted', msg.mediaUrl && !msg.body && 'px-1')}>
+            {formatTime(msg.createdAt)}
+          </p>
+        </div>
+        {/* Like button — appears on hover or when liked */}
+        <div className={clsx('flex items-center gap-1 mt-0.5 transition-opacity', likeCount > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+          <button
+            onClick={toggleLike}
+            className={clsx('flex items-center gap-1 text-[11px] transition-colors hover:text-red-400', liked ? 'text-red-400' : 'text-muted')}
+          >
+            <Heart size={11} className={clsx(liked && 'fill-red-400')} />
+            {likeCount > 0 && <span className="tabular-nums">{likeCount}</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function NewConversationModal({ onSelect, onClose }: { onSelect: (user: Conversation['partner']) => void; onClose: () => void }) {
@@ -360,26 +412,9 @@ export default function MessagesPage() {
                   <p className="text-sm">Say hi to {activePartner.username}!</p>
                 </div>
               ) : (
-                chatMessages.map(msg => {
-                  const isMe = msg.senderId === user?.id
-                  return (
-                    <div key={msg.id} className={clsx('flex gap-2', isMe ? 'flex-row-reverse' : 'flex-row')}>
-                      {!isMe && <Avatar user={msg.sender} size="sm" />}
-                      <div className={clsx(
-                        'max-w-[70%] rounded-2xl text-sm overflow-hidden',
-                        msg.mediaUrl && !msg.body ? '' : clsx('px-3 py-2', isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface-2 text-zinc-200 rounded-tl-sm')
-                      )}>
-                        {msg.mediaUrl && (
-                          <img src={msg.mediaUrl} alt="GIF" className="rounded-xl max-w-[240px] w-full" />
-                        )}
-                        {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
-                        <p className={clsx('text-[10px] mt-1', isMe ? 'text-white/60 text-right' : 'text-muted', msg.mediaUrl && !msg.body && 'px-1')}>
-                          {formatTime(msg.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })
+                chatMessages.map(msg => (
+                  <MessageBubble key={msg.id} msg={msg} isMe={msg.senderId === user?.id} currentUserId={user!.id} />
+                ))
               )}
               <div ref={bottomRef} />
             </div>

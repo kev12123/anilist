@@ -12,7 +12,11 @@ export function registerSocketHandlers(io: Server) {
 
       const message = await prisma.message.create({
         data: { senderId: userId, receiverId: data.receiverId, body: data.body ?? '', mediaUrl: data.mediaUrl },
-        include: { sender: { select: { id: true, username: true, avatar: true } } },
+        include: {
+          sender: { select: { id: true, username: true, avatar: true } },
+          likes: { select: { userId: true } },
+          _count: { select: { likes: true } },
+        },
       })
 
       // Emit to receiver

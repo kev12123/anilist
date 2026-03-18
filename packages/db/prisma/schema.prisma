@@ -36,6 +36,7 @@ model User {
   activityLikes           ActivityLike[]
   activityCommentLikes    ActivityCommentLike[]
   replyLikes              ReplyLike[]
+  messageLikes            MessageLike[]
 }
 
 model AnimeEntry {
@@ -117,8 +118,21 @@ model Message {
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User          @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  likes    MessageLike[]
+}
+
+model MessageLike {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
 }
 
 model Activity {
