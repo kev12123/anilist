@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Tv, Users, ChevronDown, X } from 'lucide-react'
 import { AnimeCard } from '@/components/anime/AnimeCard'
@@ -90,6 +90,29 @@ export default function BrowsePage() {
   const [genre, setGenre] = useState('')
   const [year, setYear] = useState('')
   const [page, setPage] = useState(1)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Debounced autocomplete query
+  const { data: suggestions } = useQuery({
+    queryKey: ['autocomplete', input],
+    queryFn: () => api.get(`/anime/search?q=${encodeURIComponent(input)}&page=1`).then(r =>
+      (r.data?.Page?.media ?? []).slice(0, 6)
+    ),
+    enabled: tab === 'anime' && input.trim().length >= 2,
+    staleTime: 30000,
+  })
 
   const hasFilters = !!(genre || year)
 
@@ -119,6 +142,7 @@ export default function BrowsePage() {
     e.preventDefault()
     setQuery(input)
     setPage(1)
+    setShowSuggestions(false)
   }
 
   const clearFilters = () => {
@@ -158,15 +182,41 @@ export default function BrowsePage() {
         {/* Search + filters */}
         <form onSubmit={handleSearch} className="space-y-3">
           <div className="flex gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <div ref={searchRef} className="relative flex-1 max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               <input
                 type="text"
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={e => { setInput(e.target.value); setShowSuggestions(true) }}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder={tab === 'anime' ? 'Search anime...' : 'Search users...'}
                 className="w-full bg-surface border border-border rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-muted focus:outline-none focus:border-accent transition-colors"
               />
+              {/* Autocomplete dropdown */}
+              {tab === 'anime' && showSuggestions && input.trim().length >= 2 && suggestions?.length > 0 && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-surface-2 border border-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden">
+                  {suggestions.map((a: any) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onMouseDown={() => {
+                        const title = a.title.english || a.title.romaji
+                        setInput(title)
+                        setQuery(title)
+                        setPage(1)
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-surface transition-colors text-left"
+                    >
+                      <img src={a.coverImage.medium} alt={a.title.english || a.title.romaji} className="w-8 h-10 rounded object-cover flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-white truncate">{a.title.english || a.title.romaji}</p>
+                        <p className="text-xs text-muted">{a.seasonYear ?? ''}{a.genres?.[0] ? ` · ${a.genres[0]}` : ''}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               type="submit"
