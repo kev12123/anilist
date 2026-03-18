@@ -6,15 +6,17 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth'
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
-import { Send, MessageSquare, ArrowLeft, SquarePen, Search, X } from 'lucide-react'
+import { Send, MessageSquare, ArrowLeft, SquarePen, Search, X, Image as ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
+import { GifPicker } from '@/components/ui/GifPicker'
 
 interface Message {
   id: string
   senderId: string
   receiverId: string
   body: string
+  mediaUrl?: string
   read: boolean
   createdAt: string
   sender: { id: string; username: string; avatar?: string }
@@ -128,6 +130,8 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showNewConvo, setShowNewConvo] = useState(false)
+  const [gifUrl, setGifUrl] = useState('')
+  const [showGifPicker, setShowGifPicker] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null)
 
@@ -153,10 +157,10 @@ export default function MessagesPage() {
     socket.on('message:sent', (msg: Message) => {
       setChatMessages(prev => {
         // Replace the optimistic placeholder with the confirmed message
-        const hasOptimistic = prev.some(m => m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId)
+        const hasOptimistic = prev.some(m => m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId && m.mediaUrl === msg.mediaUrl)
         if (hasOptimistic) {
           return prev.map(m =>
-            m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId ? msg : m
+            m.id.startsWith('opt-') && m.body === msg.body && m.senderId === msg.senderId && m.mediaUrl === msg.mediaUrl ? msg : m
           )
         }
         // Fallback: avoid exact id dup
@@ -213,23 +217,29 @@ export default function MessagesPage() {
   }, [chatMessages])
 
   const sendMessage = () => {
-    if (!draft.trim() || !activePartner || !socketRef.current) return
+    if ((!draft.trim() && !gifUrl) || !activePartner || !socketRef.current) return
     setSending(true)
+
+    const body = draft.trim()
+    const mediaUrl = gifUrl || undefined
 
     // Optimistic append
     const optimistic: Message = {
       id: `opt-${Date.now()}`,
       senderId: user!.id,
       receiverId: activePartner.id,
-      body: draft.trim(),
+      body,
+      mediaUrl,
       read: false,
       createdAt: new Date().toISOString(),
       sender: user as any,
     }
     setChatMessages(prev => [...prev, optimistic])
     setDraft('')
+    setGifUrl('')
+    setShowGifPicker(false)
 
-    socketRef.current.emit('message:send', { receiverId: activePartner.id, body: optimistic.body })
+    socketRef.current.emit('message:send', { receiverId: activePartner.id, body: body || undefined, mediaUrl })
     setSending(false)
   }
 
@@ -356,13 +366,14 @@ export default function MessagesPage() {
                     <div key={msg.id} className={clsx('flex gap-2', isMe ? 'flex-row-reverse' : 'flex-row')}>
                       {!isMe && <Avatar user={msg.sender} size="sm" />}
                       <div className={clsx(
-                        'max-w-[70%] px-3 py-2 rounded-2xl text-sm',
-                        isMe
-                          ? 'bg-accent text-white rounded-tr-sm'
-                          : 'bg-surface-2 text-zinc-200 rounded-tl-sm'
+                        'max-w-[70%] rounded-2xl text-sm overflow-hidden',
+                        msg.mediaUrl && !msg.body ? '' : clsx('px-3 py-2', isMe ? 'bg-accent text-white rounded-tr-sm' : 'bg-surface-2 text-zinc-200 rounded-tl-sm')
                       )}>
-                        <p className="leading-relaxed break-words">{msg.body}</p>
-                        <p className={clsx('text-[10px] mt-1', isMe ? 'text-white/60 text-right' : 'text-muted')}>
+                        {msg.mediaUrl && (
+                          <img src={msg.mediaUrl} alt="GIF" className="rounded-xl max-w-[240px] w-full" />
+                        )}
+                        {msg.body && <p className="leading-relaxed break-words">{msg.body}</p>}
+                        <p className={clsx('text-[10px] mt-1', isMe ? 'text-white/60 text-right' : 'text-muted', msg.mediaUrl && !msg.body && 'px-1')}>
                           {formatTime(msg.createdAt)}
                         </p>
                       </div>
@@ -375,7 +386,27 @@ export default function MessagesPage() {
 
             {/* Input */}
             <div className="px-4 py-3 border-t border-border flex-shrink-0">
+              {gifUrl && (
+                <div className="relative max-w-[160px] mb-2 rounded-xl overflow-hidden border border-border">
+                  <img src={gifUrl} alt="GIF preview" className="w-full" />
+                  <button type="button" onClick={() => setGifUrl('')} className="absolute top-1 right-1 bg-black/70 rounded-full w-5 h-5 flex items-center justify-center text-white">
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
               <div className="flex gap-2 items-end">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowGifPicker(s => !s)}
+                    className={clsx('p-2.5 rounded-xl border transition-colors flex-shrink-0', showGifPicker ? 'bg-accent text-white border-accent' : 'border-border text-muted hover:text-white hover:border-accent')}
+                  >
+                    <ImageIcon size={16} />
+                  </button>
+                  {showGifPicker && (
+                    <GifPicker onSelect={url => { setGifUrl(url); setShowGifPicker(false) }} onClose={() => setShowGifPicker(false)} />
+                  )}
+                </div>
                 <textarea
                   value={draft}
                   onChange={e => setDraft(e.target.value)}
@@ -387,7 +418,7 @@ export default function MessagesPage() {
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={sending || !draft.trim()}
+                  disabled={sending || (!draft.trim() && !gifUrl)}
                   className="p-2.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-white rounded-xl transition-colors flex-shrink-0"
                 >
                   <Send size={16} />

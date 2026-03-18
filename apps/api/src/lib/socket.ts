@@ -6,11 +6,12 @@ export function registerSocketHandlers(io: Server) {
     const userId = socket.handshake.auth?.userId as string
     if (userId) socket.join(`user:${userId}`)
 
-    socket.on('message:send', async (data: { receiverId: string; body: string }) => {
+    socket.on('message:send', async (data: { receiverId: string; body?: string; mediaUrl?: string }) => {
       if (!userId) return
+      if (!data.body && !data.mediaUrl) return
 
       const message = await prisma.message.create({
-        data: { senderId: userId, receiverId: data.receiverId, body: data.body },
+        data: { senderId: userId, receiverId: data.receiverId, body: data.body ?? '', mediaUrl: data.mediaUrl },
         include: { sender: { select: { id: true, username: true, avatar: true } } },
       })
 
