@@ -237,7 +237,6 @@ export default function MessagesPage() {
     queryKey: ['conversations'],
     queryFn: () => api.get('/messages/conversations').then(r => r.data),
     enabled: mounted && !!token,
-    refetchInterval: 30000,
   })
 
   // Auto-open conversation when coming from ?user= (e.g. profile Message button)
