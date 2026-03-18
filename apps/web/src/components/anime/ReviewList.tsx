@@ -24,6 +24,8 @@ export function ReviewList({ animeId }: ReviewListProps) {
     queryFn: () => api.get(`/anime/${animeId}/reviews`).then(r => r.data),
   })
 
+  const hasReviewed = !!user && reviews?.some((r: any) => r.userId === user.id)
+
   const { mutate: submitReview, isPending } = useMutation({
     mutationFn: () => api.post('/reviews', { anilistId: animeId, score, body }),
     onSuccess: () => {
@@ -32,6 +34,10 @@ export function ReviewList({ animeId }: ReviewListProps) {
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['anime-reviews', animeId] })
       queryClient.invalidateQueries({ queryKey: ['user-reviews'] })
+      // Update review count in profile panel + profile page
+      if (user?.username) {
+        queryClient.invalidateQueries({ queryKey: ['profile', user.username] })
+      }
     },
   })
 
@@ -40,6 +46,9 @@ export function ReviewList({ animeId }: ReviewListProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['anime-reviews', animeId] })
       queryClient.invalidateQueries({ queryKey: ['user-reviews'] })
+      if (user?.username) {
+        queryClient.invalidateQueries({ queryKey: ['profile', user.username] })
+      }
     },
   })
 
@@ -53,19 +62,21 @@ export function ReviewList({ animeId }: ReviewListProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-white">Reviews</h2>
-        <button
-          onClick={() => {
-            if (!token) { openAuthModal('Sign in to write a review.'); return }
-            setShowForm(s => !s)
-          }}
-          className={clsx(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-            showForm ? 'bg-surface-2 text-muted border border-border' : 'bg-accent hover:bg-accent-hover text-white'
-          )}
-        >
-          {showForm ? <X size={14} /> : <Plus size={14} />}
-          {showForm ? 'Cancel' : 'Write Review'}
-        </button>
+        {!hasReviewed && (
+          <button
+            onClick={() => {
+              if (!token) { openAuthModal('Sign in to write a review.'); return }
+              setShowForm(s => !s)
+            }}
+            className={clsx(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+              showForm ? 'bg-surface-2 text-muted border border-border' : 'bg-accent hover:bg-accent-hover text-white'
+            )}
+          >
+            {showForm ? <X size={14} /> : <Plus size={14} />}
+            {showForm ? 'Cancel' : 'Write Review'}
+          </button>
+        )}
       </div>
 
       {/* Review form */}

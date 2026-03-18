@@ -28,9 +28,9 @@ export async function animeRoutes(fastify: FastifyInstance) {
   })
 
   fastify.get('/search', async (request, reply) => {
-    const { q, page = 1 } = request.query as { q: string; page?: number }
-    if (!q) return reply.status(400).send({ error: 'Missing search query' })
-    const data = await searchAnime(q, Number(page))
+    const { q, page = 1, genre, year } = request.query as { q?: string; page?: number; genre?: string; year?: string }
+    if (!q && !genre && !year) return reply.status(400).send({ error: 'Missing search query' })
+    const data = await searchAnime(q ?? '', Number(page), 20, genre, year ? Number(year) : undefined)
     return reply.send(data)
   })
 
