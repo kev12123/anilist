@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth'
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
-import { Send, MessageSquare, ArrowLeft } from 'lucide-react'
+import { Send, MessageSquare, ArrowLeft, SquarePen, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
 
@@ -48,6 +48,75 @@ function formatTime(iso: string) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
+function NewConversationModal({ onSelect, onClose }: { onSelect: (user: Conversation['partner']) => void; onClose: () => void }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Conversation['partner'][]>([])
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setResults([]); return }
+    setLoading(true)
+    const t = setTimeout(() => {
+      api.get(`/users/find/search?q=${encodeURIComponent(query)}`).then(r => {
+        setResults(r.data)
+      }).finally(() => setLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [query])
+
+  // Close on backdrop click
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (e.target === backdropRef.current) onClose()
+  }
+
+  return (
+    <div ref={backdropRef} onClick={handleBackdrop} className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+        <div className="flex items-center gap-3 p-4 border-b border-border">
+          <Search size={15} className="text-muted flex-shrink-0" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search users..."
+            className="flex-1 bg-transparent text-sm text-white placeholder-muted focus:outline-none"
+          />
+          <button onClick={onClose} className="text-muted hover:text-white transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="max-h-72 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-8 text-muted text-sm gap-2">
+              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              Searching...
+            </div>
+          ) : results.length === 0 && query.trim().length >= 2 ? (
+            <div className="text-center py-8 text-muted text-sm">No users found</div>
+          ) : results.length === 0 ? (
+            <div className="text-center py-8 text-muted text-sm">Type to search for a user</div>
+          ) : (
+            results.map(u => (
+              <button
+                key={u.id}
+                onClick={() => { onSelect(u); onClose() }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
+              >
+                <Avatar user={u} size="sm" />
+                <span className="text-sm font-medium text-white">{u.username}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MessagesPage() {
   const { user, token, openAuthModal } = useAuthStore()
   const queryClient = useQueryClient()
@@ -58,6 +127,7 @@ export default function MessagesPage() {
   const [chatMessages, setChatMessages] = useState<Message[]>([])
   const [sending, setSending] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showNewConvo, setShowNewConvo] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null)
 
@@ -185,20 +255,34 @@ export default function MessagesPage() {
   }
 
   return (
+    <>
+    {showNewConvo && (
+      <NewConversationModal
+        onSelect={partner => { setActivePartner(partner); setShowNewConvo(false) }}
+        onClose={() => setShowNewConvo(false)}
+      />
+    )}
     <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex gap-4">
       {/* Conversation list */}
       <div className={clsx(
         'w-80 flex-shrink-0 bg-surface border border-border rounded-xl flex flex-col',
         activePartner ? 'hidden md:flex' : 'flex'
       )}>
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Messages</h2>
+          <button
+            onClick={() => setShowNewConvo(true)}
+            className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-surface-2 transition-colors"
+            title="New conversation"
+          >
+            <SquarePen size={16} />
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted gap-2 px-4 text-center">
               <MessageSquare size={32} />
-              <p className="text-sm">No conversations yet.<br />Visit a user's profile to start one.</p>
+              <p className="text-sm">No conversations yet.<br />Hit the <SquarePen size={12} className="inline" /> button to start one.</p>
             </div>
           ) : (
             conversations.map(conv => (
@@ -315,5 +399,6 @@ export default function MessagesPage() {
         )}
       </div>
     </div>
+    </>
   )
 }
