@@ -39,6 +39,16 @@ export async function userRoutes(fastify: FastifyInstance) {
     return reply.send(users)
   })
 
+  fastify.get('/by-id/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, username: true, avatar: true },
+    })
+    if (!user) return reply.status(404).send({ error: 'Not found' })
+    return reply.send(user)
+  })
+
   fastify.get('/:username', async (request, reply) => {
     const { username } = request.params as { username: string }
     const user = await prisma.user.findUnique({
