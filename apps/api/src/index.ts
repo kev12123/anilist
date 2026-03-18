@@ -13,6 +13,7 @@ import { discussionRoutes } from './routes/discussions'
 import { messageRoutes } from './routes/messages'
 import { postRoutes } from './routes/posts'
 import { activityRoutes } from './routes/activity'
+import { notificationRoutes } from './routes/notifications'
 import { registerSocketHandlers } from './lib/socket'
 
 const fastify = Fastify({ logger: true })
@@ -37,6 +38,7 @@ fastify.register(discussionRoutes, { prefix: '/api/discussions' })
 fastify.register(messageRoutes, { prefix: '/api/messages' })
 fastify.register(postRoutes, { prefix: '/api/posts' })
 fastify.register(activityRoutes, { prefix: '/api/activity' })
+fastify.register(notificationRoutes, { prefix: '/api/notifications' })
 
 // Socket.io
 registerSocketHandlers(io)

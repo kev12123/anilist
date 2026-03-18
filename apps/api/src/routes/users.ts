@@ -3,6 +3,7 @@ import { prisma } from '@anilist/db'
 import { requireAuth } from '../lib/auth'
 import { z } from 'zod'
 import { createActivityEvent } from './activity'
+import { createNotification } from '../lib/notifications'
 
 const updateProfileSchema = z.object({
   bio: z.string().max(500).optional(),
@@ -96,6 +97,15 @@ export async function userRoutes(fastify: FastifyInstance) {
         userId: follower.id,
         type: 'FOLLOW',
         body: followedUser?.username,
+      })
+
+      // Notify the followed user
+      const followerUser = await prisma.user.findUnique({ where: { id: follower.id }, select: { username: true } })
+      await createNotification({
+        userId: followingId,
+        type: 'FOLLOW',
+        message: `${followerUser?.username} started following you`,
+        link: `/profile/${followerUser?.username}`,
       })
     }
 
