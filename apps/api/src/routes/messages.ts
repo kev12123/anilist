@@ -48,8 +48,30 @@ export async function messageRoutes(fastify: FastifyInstance) {
         ],
       },
       orderBy: { createdAt: 'asc' },
-      include: { sender: { select: { id: true, username: true, avatar: true } } },
+      include: {
+        sender: { select: { id: true, username: true, avatar: true } },
+        likes: { select: { userId: true } },
+        _count: { select: { likes: true } },
+      },
     })
     return reply.send(messages)
+  })
+
+  // Like / unlike a message
+  fastify.post('/:messageId/like', { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user as { id: string }
+    const { messageId } = request.params as { messageId: string }
+
+    const existing = await prisma.messageLike.findUnique({
+      where: { messageId_userId: { messageId, userId: user.id } },
+    })
+
+    if (existing) {
+      await prisma.messageLike.delete({ where: { messageId_userId: { messageId, userId: user.id } } })
+      return reply.send({ liked: false })
+    }
+
+    await prisma.messageLike.create({ data: { messageId, userId: user.id } })
+    return reply.send({ liked: true })
   })
 }
