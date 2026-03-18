@@ -32,6 +32,10 @@ export function ReviewList({ animeId }: ReviewListProps) {
       setShowForm(false)
       queryClient.invalidateQueries({ queryKey: ['anime-reviews', animeId] })
       queryClient.invalidateQueries({ queryKey: ['user-reviews'] })
+      // Update review count in profile panel + profile page
+      if (user?.username) {
+        queryClient.invalidateQueries({ queryKey: ['profile', user.username] })
+      }
     },
   })
 
@@ -40,6 +44,9 @@ export function ReviewList({ animeId }: ReviewListProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['anime-reviews', animeId] })
       queryClient.invalidateQueries({ queryKey: ['user-reviews'] })
+      if (user?.username) {
+        queryClient.invalidateQueries({ queryKey: ['profile', user.username] })
+      }
     },
   })
 
