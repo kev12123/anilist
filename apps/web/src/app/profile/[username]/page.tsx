@@ -173,18 +173,19 @@ export default function ProfilePage() {
         {/* Stats row */}
         <div className="flex gap-6 mt-5 pt-5 border-t border-border">
           {[
-            { label: 'Reviews', value: profile._count?.reviews ?? 0 },
-            { label: 'Followers', value: profile._count?.followers ?? 0, onClick: () => setTab('followers') },
-            { label: 'Following', value: profile._count?.following ?? 0, onClick: () => setTab('following') },
+            { label: 'Reviews', value: profile._count?.reviews ?? 0, tab: 'reviews' },
+            { label: 'Followers', value: profile._count?.followers ?? 0, tab: 'followers' },
+            { label: 'Following', value: profile._count?.following ?? 0, tab: 'following' },
           ].map(stat => (
-            <button
+            <Link
               key={stat.label}
-              onClick={stat.onClick}
+              href={`/profile/${username}?tab=${stat.tab}`}
+              onClick={() => setTab(stat.tab as Tab)}
               className="text-left hover:opacity-80 transition-opacity"
             >
               <p className="text-xl font-bold text-white">{stat.value}</p>
               <p className="text-xs text-muted">{stat.label}</p>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
