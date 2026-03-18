@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { prisma } from '@anilist/db'
+import { createNotification } from './notifications'
 
 export function registerSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -23,6 +24,18 @@ export function registerSocketHandlers(io: Server) {
       io.to(`user:${data.receiverId}`).emit('message:received', message)
       // Emit back to sender for confirmation
       socket.emit('message:sent', message)
+
+      // Notify receiver
+      try {
+        const sender = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } })
+        await createNotification({
+          userId: data.receiverId,
+          type: 'MESSAGE',
+          message: `${sender?.username} sent you a message`,
+          link: '/messages',
+        })
+        io.to(`user:${data.receiverId}`).emit('notification:new')
+      } catch { /* non-blocking */ }
     })
 
     socket.on('message:read', async (data: { senderId: string }) => {

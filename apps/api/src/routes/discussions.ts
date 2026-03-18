@@ -3,6 +3,7 @@ import { prisma } from '@anilist/db'
 import { requireAuth } from '../lib/auth'
 import { z } from 'zod'
 import { createActivityEvent } from './activity'
+import { createNotification } from '../lib/notifications'
 import { getAnime } from '../lib/anilist'
 
 const createDiscussionSchema = z.object({
@@ -205,6 +206,36 @@ export async function discussionRoutes(fastify: FastifyInstance) {
           animeTitle: animeTitle ? `${animeTitle} — Episode ${discussion.episodeNumber}` : `Episode ${discussion.episodeNumber}`,
           animeCover: media?.coverImage?.medium,
         })
+      }
+    } catch { /* non-blocking */ }
+
+    // Notify discussion author (if not the same user) or parent reply author
+    try {
+      const replierUser = await prisma.user.findUnique({ where: { id: user.id }, select: { username: true } })
+      if (parentId) {
+        // Nested reply — notify parent reply author
+        const parentReply = await prisma.reply.findUnique({ where: { id: parentId }, select: { userId: true } })
+        if (parentReply && parentReply.userId !== user.id) {
+          await createNotification({
+            userId: parentReply.userId,
+            type: 'REPLY',
+            message: `${replierUser?.username} replied to your comment`,
+            link: `/anime/${reply_.discussionId}`,
+          })
+        }
+      } else {
+        // Top-level reply — notify discussion author
+        const discussion = await prisma.discussion.findUnique({ where: { id }, select: { userId: true, anilistId: true, episodeNumber: true } })
+        if (discussion && discussion.userId !== user.id) {
+          await createNotification({
+            userId: discussion.userId,
+            type: 'REPLY',
+            message: `${replierUser?.username} commented on your discussion`,
+            link: discussion.episodeNumber
+              ? `/anime/${discussion.anilistId}/episode/${discussion.episodeNumber}`
+              : `/anime/${discussion.anilistId}/discussion/${id}`,
+          })
+        }
       }
     } catch { /* non-blocking */ }
 
