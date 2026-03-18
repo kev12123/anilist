@@ -89,20 +89,22 @@ export default function BrowsePage() {
   const [query, setQuery] = useState('')
   const [genre, setGenre] = useState('')
   const [year, setYear] = useState('')
+  const [page, setPage] = useState(1)
 
   const hasFilters = !!(genre || year)
 
   const { data: animeData, isLoading: animeLoading } = useQuery({
-    queryKey: ['browse-anime', query, genre, year],
+    queryKey: ['browse-anime', query, genre, year, page],
     queryFn: () => {
       const params = new URLSearchParams()
       if (query) params.set('q', query)
       if (genre) params.set('genre', genre)
       if (year) params.set('year', year)
+      params.set('page', String(page))
       const hasSearch = query || genre || year
       return hasSearch
         ? api.get(`/anime/search?${params.toString()}`).then(r => r.data)
-        : api.get('/anime/trending').then(r => r.data)
+        : api.get(`/anime/trending?page=${page}`).then(r => r.data)
     },
     enabled: tab === 'anime',
   })
@@ -116,14 +118,17 @@ export default function BrowsePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setQuery(input)
+    setPage(1)
   }
 
   const clearFilters = () => {
     setGenre('')
     setYear('')
+    setPage(1)
   }
 
   const anime = animeData?.Page?.media ?? []
+  const pageInfo = animeData?.Page?.pageInfo
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -178,13 +183,13 @@ export default function BrowsePage() {
                 label="Genre"
                 value={genre}
                 options={GENRES.map(g => ({ label: g, value: g }))}
-                onChange={setGenre}
+                onChange={v => { setGenre(v); setPage(1) }}
               />
               <FilterDropdown
                 label="Year"
                 value={year}
                 options={YEARS.map(y => ({ label: String(y), value: String(y) }))}
-                onChange={setYear}
+                onChange={v => { setYear(v); setPage(1) }}
               />
               {hasFilters && (
                 <button
@@ -230,6 +235,29 @@ export default function BrowsePage() {
                 />
               ))}
             </div>
+
+            {/* Pagination */}
+            {pageInfo && (pageInfo.currentPage > 1 || pageInfo.hasNextPage) && (
+              <div className="flex items-center justify-center gap-3 mt-8">
+                <button
+                  onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                  disabled={page <= 1}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-muted hover:text-white hover:border-accent/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Previous
+                </button>
+                <span className="text-sm text-muted">
+                  Page {pageInfo.currentPage}{pageInfo.lastPage ? ` of ${pageInfo.lastPage}` : ''}
+                </span>
+                <button
+                  onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                  disabled={!pageInfo.hasNextPage}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-muted hover:text-white hover:border-accent/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </>
         )
       )}
