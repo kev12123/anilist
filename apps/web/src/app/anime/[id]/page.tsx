@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { Star } from 'lucide-react'
 import { AnimeActions } from './AnimeActions'
 import { AnimeBottomTabs } from './AnimeBottomTabs'
+import { RelatedAnime } from '@/components/anime/RelatedAnime'
 
 async function getAnime(id: string) {
   const res = await fetch(`${process.env.API_URL || 'http://localhost:4000'}/api/anime/${id}`, {
@@ -86,6 +87,7 @@ export default async function AnimePage({ params }: { params: { id: string } }) 
       </div>
 
       <AnimeBottomTabs animeId={anime.id} totalEpisodes={anime.episodes ?? 0} />
+      <RelatedAnime relations={anime.relations} recommendations={anime.recommendations} />
     </div>
   )
 }
