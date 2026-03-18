@@ -115,13 +115,23 @@ export async function animeRoutes(fastify: FastifyInstance) {
   fastify.patch('/:id/entry/progress', { preHandler: [requireAuth] }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const user = request.user as { id: string }
-    const { progress } = z.object({ progress: z.number().min(0) }).parse(request.body)
 
-    const entry = await prisma.animeEntry.upsert({
-      where: { userId_anilistId: { userId: user.id, anilistId: Number(id) } },
-      update: { progress },
-      create: { userId: user.id, anilistId: Number(id), status: 'WATCHING', progress },
-    })
-    return reply.send(entry)
+    const parsed = z.object({ progress: z.number().min(0) }).safeParse(request.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Invalid progress value', details: parsed.error.issues })
+    }
+    const { progress } = parsed.data
+
+    try {
+      const entry = await prisma.animeEntry.upsert({
+        where: { userId_anilistId: { userId: user.id, anilistId: Number(id) } },
+        update: { progress },
+        create: { userId: user.id, anilistId: Number(id), status: 'WATCHING', progress },
+      })
+      return reply.send(entry)
+    } catch (err: any) {
+      request.log.error(err, 'Failed to update episode progress')
+      return reply.status(500).send({ error: 'Failed to update progress', message: err?.message ?? 'Unknown error' })
+    }
   })
 }
