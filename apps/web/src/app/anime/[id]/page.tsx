@@ -6,7 +6,7 @@ import { RelatedAnime } from '@/components/anime/RelatedAnime'
 
 async function getAnime(id: string) {
   const res = await fetch(`${process.env.API_URL || 'http://localhost:4000'}/api/anime/${id}`, {
-    next: { revalidate: 3600 },
+    next: { revalidate: 0 },
   })
   if (!res.ok) return null
   return res.json()
